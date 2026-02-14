@@ -226,11 +226,14 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, students, onAddPo
     setSuccessMessage("");
 
     try {
-      const success = await updateClassBonusInSheet(selectedClassForBonus, classBonusValue);
-      console.log("[AdminModal] Update result:", success);
+      const result = await updateClassBonusInSheet(selectedClassForBonus, classBonusValue);
+      console.log("[AdminModal] Update result:", result);
       
-      if (success) {
-        setSuccessMessage(`✓ בונוס כיתתי של ${classBonusValue} נקודות עודכן לכיתה ${selectedClassForBonus}`);
+      if (result.success) {
+        const totalText = typeof result.totalBonus === 'number'
+          ? ` סה"כ בונוס כיתתי: ${result.totalBonus}`
+          : '';
+        setSuccessMessage(`✓ נוספו ${classBonusValue} נקודות בונוס לכיתה ${selectedClassForBonus}.${totalText}`);
         setClassBonusValue('');
         setSelectedClassForBonus("");
         // Refresh data - wait a bit to ensure Google Sheets has updated

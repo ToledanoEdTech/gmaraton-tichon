@@ -232,14 +232,15 @@ export const getTopStudents = (students: Student[], limit: number = 10): Student
   return [...students].sort((a, b) => b.score - a.score).slice(0, limit);
 };
 
-export const updateClassBonusInSheet = async (grade: string, bonus: number): Promise<boolean> => {
+/** תוצאה: success + totalBonus (הסכום הכולל אחרי ההוספה) מהשרת */
+export const updateClassBonusInSheet = async (grade: string, bonus: number): Promise<{ success: boolean; totalBonus?: number }> => {
   if (!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("PASTE_YOUR")) {
     alert("Please configure the Google Apps Script URL in constants.ts");
-    return false;
+    return { success: false };
   }
 
   try {
-    console.log(`[Class Bonus] Updating class bonus for grade: "${grade}" with bonus: ${bonus}`);
+    console.log(`[Class Bonus] Adding ${bonus} to class bonus for grade: "${grade}"`);
 
     const payload = JSON.stringify({
       type: 'classBonus',
@@ -264,7 +265,7 @@ export const updateClassBonusInSheet = async (grade: string, bonus: number): Pro
       console.error(`[Class Bonus] HTTP Error: ${response.status} ${response.statusText}`);
       const errorText = await response.text();
       console.error("[Class Bonus] Error response:", errorText);
-      return false;
+      return { success: false };
     }
 
     const responseText = await response.text();
@@ -276,14 +277,17 @@ export const updateClassBonusInSheet = async (grade: string, bonus: number): Pro
 
       if (result.success === true) {
         console.log("[Class Bonus] Update successful:", result.message);
-        // Update cache
-        classBonusesCache[grade] = bonus;
-        console.log("[Class Bonus] Cache updated:", classBonusesCache);
-        return true;
+        // עדכון cache לפי הסכום הכולל מהשרת — מפתח = שם הגיליון (כמו ב-doGet) כדי שהתצוגה תהיה נכונה
+        const newTotal = typeof result.totalBonus === 'number' ? result.totalBonus : (classBonusesCache[grade] || 0) + bonus;
+        const sheetKey = result.sheetName || grade;
+        classBonusesCache[sheetKey] = newTotal;
+        if (sheetKey !== grade) classBonusesCache[grade] = newTotal;
+        console.log("[Class Bonus] Cache updated with totalBonus:", newTotal, "keys:", sheetKey, grade, classBonusesCache);
+        return { success: true, totalBonus: newTotal };
       } else {
         console.error("[Class Bonus] GAS returned error:", result.error);
         alert(`שגיאה בעדכון הבונוס: ${result.error || 'שגיאה לא ידועה'}`);
-        return false;
+        return { success: false };
       }
     } catch (parseError) {
       console.warn("[Class Bonus] Could not parse response as JSON:", parseError);
@@ -292,12 +296,16 @@ export const updateClassBonusInSheet = async (grade: string, bonus: number): Pro
       if (!isSuccess) {
         alert(`שגיאה בעדכון הבונוס. תגובה מהשרת: ${responseText.substring(0, 100)}`);
       }
-      return isSuccess;
+      if (isSuccess) {
+        classBonusesCache[grade] = (classBonusesCache[grade] || 0) + bonus;
+        return { success: true, totalBonus: classBonusesCache[grade] };
+      }
+      return { success: false };
     }
   } catch (error) {
     console.error("[Class Bonus] Failed to update class bonus:", error);
     alert(`שגיאה בעדכון הבונוס: ${error instanceof Error ? error.message : 'שגיאה לא ידועה'}`);
-    return false;
+    return { success: false };
   }
 };
 

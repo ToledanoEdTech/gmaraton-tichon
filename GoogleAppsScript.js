@@ -2,6 +2,7 @@
 // גמרתון ישיבת צביה אלישיב לוד - Google Apps Script
 // ניקוד נשאב אך ורק מהקובץ (גוגל שיטס). עדכון ניקוד מהאתר נכתב לקובץ.
 // מבנה גיליון: שורה 1 כותרות, שורה 2 בונוס כיתתי ב-D2, משורה 3: עמודה B=שם, עמודה C=ניקוד.
+// בונוס כיתתי: כל הזנה מתווספת לבונוס הקיים ב-D2 (לא מחליפה). אחרי שינוי — לפרסם מחדש (Deploy).
 // =====================================================
 
 function doPost(e) {
@@ -38,19 +39,18 @@ function doPost(e) {
     // בדוק אם זה עדכון בונוס כיתתי או עדכון ניקוד תלמיד
     console.log("Checking if type is classBonus. data.type =", data.type, "comparison result:", data.type === 'classBonus');
     if (data.type === 'classBonus') {
-      // עדכון בונוס כיתתי
-      console.log("=== CLASS BONUS UPDATE REQUEST ===");
+      // עדכון בונוס כיתתי — חובה: להוסיף לבונוס הקיים, לא להחליף!
+      console.log("=== CLASS BONUS UPDATE REQUEST (ADD to existing) ===");
       console.log("Received data:", JSON.stringify(data));
       
       var studentGrade = data.grade ? data.grade.toString().trim() : '';
-      var bonusToSet = parseFloat(data.bonus) || 0;
+      var bonusToAdd = Number(data.bonus);
+      if (isNaN(bonusToAdd) || bonusToAdd < 0) bonusToAdd = 0;
 
-      console.log("Parsed grade: '" + studentGrade + "', Parsed bonus: " + bonusToSet);
-      console.log("Grade is empty?", !studentGrade);
-      console.log("Bonus is NaN?", isNaN(bonusToSet));
+      console.log("Parsed grade: '" + studentGrade + "', Bonus to ADD: " + bonusToAdd);
 
-      if (!studentGrade || isNaN(bonusToSet)) {
-        console.log("ERROR: Missing required fields for class bonus");
+      if (!studentGrade) {
+        console.log("ERROR: Missing grade for class bonus");
         return createJsonResponse({
           success: false,
           error: "חסרים נתונים נדרשים: כיתה או בונוס",
@@ -95,36 +95,51 @@ function doPost(e) {
       
       console.log("Sheet name: " + sheet.getName());
       console.log("Sheet has " + sheet.getLastRow() + " rows and " + sheet.getLastColumn() + " columns");
-      console.log("Updating cell at row " + targetRow + ", column " + targetColumn + " (D2) with value: " + bonusToSet);
       
       // Ensure the sheet has enough rows and columns
       if (sheet.getLastRow() < targetRow) {
         console.log("Sheet doesn't have row " + targetRow + ", ensuring it exists...");
-        sheet.getRange(targetRow, 1).setValue(""); // Create the row if it doesn't exist
+        sheet.getRange(targetRow, 1).setValue("");
       }
       if (sheet.getLastColumn() < targetColumn) {
         console.log("Sheet doesn't have column " + targetColumn + ", ensuring it exists...");
-        sheet.getRange(1, targetColumn).setValue(""); // Create the column if it doesn't exist
+        sheet.getRange(1, targetColumn).setValue("");
       }
       
       var targetRange = sheet.getRange(targetRow, targetColumn);
       var currentValue = targetRange.getValue();
-      console.log("Current value in cell D2: '" + currentValue + "'");
+      console.log("Current value in D2 (raw):", currentValue, "type:", typeof currentValue);
       
-      // D2 = בונוס כיתתי (ידני בלבד — ניקוד רק מהקובץ)
-      console.log("Writing bonus " + bonusToSet + " to cell D2...");
-      targetRange.setValue(bonusToSet);
+      // פרסור אמין: תא יכול להיות מספר, מחרוזת "300", או ריק
+      var currentBonus = 0;
+      if (currentValue !== null && currentValue !== undefined && currentValue !== '') {
+        if (typeof currentValue === 'number' && !isNaN(currentValue)) {
+          currentBonus = currentValue;
+        } else {
+          var s = String(currentValue).replace(/\s/g, '').replace(',', '.');
+          var parsed = parseFloat(s);
+          if (!isNaN(parsed)) currentBonus = parsed;
+        }
+      }
+      // חובה: סה"כ חדש = קיים + מה שהוספנו (אף פעם לא להחליף!)
+      var newTotalBonus = Number(currentBonus) + Number(bonusToAdd);
+      if (isNaN(newTotalBonus)) newTotalBonus = currentBonus + bonusToAdd;
+      
+      console.log("D2 current=" + currentBonus + ", adding " + bonusToAdd + " -> new total=" + newTotalBonus + " (writing to D2)");
+      targetRange.setValue(newTotalBonus);
       SpreadsheetApp.flush();
       Utilities.sleep(200);
       var newValue = targetRange.getValue();
-      console.log("New value in cell D2: '" + newValue + "'");
+      console.log("D2 after write:", newValue);
 
-      console.log("=== CLASS BONUS UPDATE SUCCESSFUL ===");
+      console.log("=== CLASS BONUS UPDATE SUCCESSFUL (ADD) ===");
       return createJsonResponse({
         success: true,
-        message: "בונוס כיתתי עודכן בהצלחה",
+        message: "בונוס כיתתי עודכן בהצלחה (נוסף לבונוס הקיים)",
         grade: studentGrade,
-        totalBonus: bonusToSet,
+        bonusAdded: bonusToAdd,
+        previousBonus: currentBonus,
+        totalBonus: newTotalBonus,
         sheetName: sheet.getName(),
         targetCell: "D" + targetRow
       });
