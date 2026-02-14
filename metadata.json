@@ -1,0 +1,5 @@
+{
+  "name": "Gemarathon Dashboard",
+  "description": "A Charidy-style dashboard for tracking Yeshiva Gemara learning scores by class and student.",
+  "requestFramePermissions": []
+}
