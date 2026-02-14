@@ -18,9 +18,18 @@ import { Leaderboard } from './components/Leaderboard';
 import { AdminModal } from './components/AdminModal';
 import { HistoryModal } from './components/HistoryModal';
 import { ClassDetailModal } from './components/ClassDetailModal';
-import { ProgressTableModal } from './components/ProgressTableModal';
 import { Top150Modal } from './components/Top150Modal';
-import { Search, Lock, TrendingUp, Sparkles, RefreshCw, AlertCircle, BookOpen, LayoutList, X, Trophy } from 'lucide-react';
+import { Search, Lock, TrendingUp, Sparkles, RefreshCw, AlertCircle, BookOpen, X, Trophy } from 'lucide-react';
+
+// תמונות רקע ל-header — פרוסות לרוחב כל הפס (כל תמונה = פס רקע). להוספה: שים ב-public/ והוסף לרשימה
+const HEADER_BG_IMAGES: string[] = [
+  'yeshiva-side.jpg',
+  'header-2.jpg',
+  'header-1.jpg',
+  'header-3.jpg',
+  'header-4.jpg',
+  'header-5.jpg',
+];
 
 const App: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
@@ -29,7 +38,6 @@ const App: React.FC = () => {
   // Modals state
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [isProgressTableOpen, setIsProgressTableOpen] = useState(false);
   const [isTop150Open, setIsTop150Open] = useState(false);
   const [selectedClassForDetail, setSelectedClassForDetail] = useState<string | null>(null);
   
@@ -42,6 +50,7 @@ const App: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState("");
   const [logoError, setLogoError] = useState(false);
   const [yeshivaImageError, setYeshivaImageError] = useState(false);
+  const [headerImageErrors, setHeaderImageErrors] = useState<Record<string, boolean>>({});
   const studentsLengthRef = useRef(0);
   useEffect(() => { studentsLengthRef.current = students.length; }, [students]);
 
@@ -264,82 +273,72 @@ const App: React.FC = () => {
       {/* Main Content Wrapper */}
       <div className="relative z-10 flex-1 flex flex-col p-3 md:p-4 lg:p-6 xl:p-8 max-w-[1600px] mx-auto w-full">
         
-        {/* Header */}
-        <header className="relative mb-10 rounded-3xl overflow-hidden shadow-2xl border border-white/10">
-          {/* Background Image */}
-          <div className="absolute inset-0 z-0">
-            {!yeshivaImageError ? (
-              <img 
-                src="/yeshiva.jpg" 
-                alt="ישיבת צביה אלישיב לוד" 
-                className="w-full h-full object-cover"
-                onError={() => setYeshivaImageError(true)}
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-slate-900 via-amber-900/30 to-slate-900"></div>
-            )}
-            {/* Dark overlay for better text visibility */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/80"></div>
-            {/* Decorative overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-amber-900/20 via-transparent to-amber-900/20"></div>
-          </div>
-          
-          {/* Header Content */}
-          <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6 p-4 md:p-6 lg:p-8">
-            <div className="flex items-center gap-6 group w-full md:w-auto">
-               <div className="relative flex-shrink-0">
-                  <div className="absolute inset-0 bg-amber-500 blur-lg opacity-30 group-hover:opacity-50 transition-opacity"></div>
-                  <div className={`relative w-28 h-28 md:w-40 md:h-40 lg:w-48 lg:h-48 rounded-2xl rotate-3 group-hover:rotate-6 transition-transform flex items-center justify-center shadow-2xl shadow-amber-500/30 ring-2 ring-white/20 border-2 border-amber-300/50 overflow-hidden ${logoError ? 'bg-gradient-to-br from-amber-400 to-yellow-600' : 'bg-white'}`}>
-                      {logoError ? (
-                        <BookOpen className="text-slate-900 w-12 h-12 md:w-16 md:h-16 lg:w-20 lg:h-20" />
-                      ) : (
-                        <img
-                          src="/logo.png"
-                          alt="לוגו ישיבת צביה אלישיב לוד"
-                          className="w-[90%] h-[90%] object-contain"
-                          onError={() => setLogoError(true)}
-                        />
-                      )}
+        {/* Header — רקע: 6 תמונות פרוסות לרוחב כל הפס, מעליהן לוגו וכפתורים */}
+        <header className="relative mb-10 rounded-3xl overflow-hidden shadow-2xl border border-white/10 h-[200px] md:h-[240px] lg:h-[280px] bg-slate-900">
+          {/* שכבת רקע — כל תמונה תופסת חלק שווה, במסגרת עדינה */}
+          <div className="absolute inset-0 z-0 flex flex-row p-[3px] gap-[2px] md:p-1 md:gap-1">
+            {HEADER_BG_IMAGES.map((src) => (
+              <div key={src} className="flex-1 min-w-0 h-full overflow-hidden rounded-sm md:rounded border border-white/20 bg-slate-800 shadow-inner">
+                {!headerImageErrors[src] ? (
+                  <img
+                    src={`/${src}`}
+                    alt=""
+                    className="w-full h-full object-cover object-center"
+                    onError={() => setHeaderImageErrors((prev) => ({ ...prev, [src]: true }))}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-slate-800">
+                    <BookOpen className="w-10 h-10 text-slate-600" />
                   </div>
-               </div>
-               <div className="flex-1">
-                  <h1 className="text-2xl md:text-4xl lg:text-5xl font-black text-white tracking-tight drop-shadow-2xl mb-2">
+                )}
+              </div>
+            ))}
+          </div>
+          {/* כיסוי כהה עדין — כדי שהטקסט יקרא */}
+          <div className="absolute inset-0 z-[1] bg-gradient-to-b from-black/75 via-black/50 to-black/75 pointer-events-none" />
+          {/* תוכן מעל הרקע: לוגו למעלה במרכז, כפתורים למטה צמוד לשמאל */}
+          <div className="absolute inset-0 z-[2] flex flex-col p-4 md:p-6">
+            <div className="flex-1 flex items-center justify-center">
+              <div className="flex items-center gap-4 md:gap-6 group">
+                <div className="relative flex-shrink-0">
+                  <div className="absolute inset-0 bg-amber-500 blur-lg opacity-30 group-hover:opacity-50 transition-opacity rounded-2xl" />
+                  <div className={`relative w-20 h-20 md:w-28 md:h-28 lg:w-36 lg:h-36 rounded-2xl rotate-3 group-hover:rotate-6 transition-transform flex items-center justify-center shadow-2xl shadow-amber-500/30 ring-2 ring-white/20 border-2 border-amber-300/50 overflow-hidden ${logoError ? 'bg-gradient-to-br from-amber-400 to-yellow-600' : 'bg-white'}`}>
+                    {logoError ? (
+                      <BookOpen className="text-slate-900 w-8 h-8 md:w-12 md:h-12" />
+                    ) : (
+                      <img
+                        src="/logo.png"
+                        alt="לוגו ישיבת צביה אלישיב לוד"
+                        className="w-[90%] h-[90%] object-contain"
+                        onError={() => setLogoError(true)}
+                      />
+                    )}
+                  </div>
+                </div>
+                <div className="min-w-0 text-center md:text-right">
+                  <h1 className="text-xl md:text-3xl lg:text-4xl font-black text-white tracking-tight drop-shadow-2xl mb-0.5">
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-amber-300 to-amber-400">מבצע הגמרתון</span>
                   </h1>
-                  <p className="text-slate-200 text-sm md:text-base md:text-lg lg:text-xl font-light tracking-wide flex items-center gap-2 flex-wrap text-center md:text-left">
-                      <span className="hidden md:inline-block w-2 h-2 rounded-full bg-amber-400 shadow-lg shadow-amber-400/50"></span>
-                      <span className="font-medium">ישיבת צביה אלישיב לוד</span>
-                      <span className="hidden md:inline-block w-2 h-2 rounded-full bg-amber-400 shadow-lg shadow-amber-400/50"></span>
-                      <span className="text-amber-300 font-semibold italic">מגדילים תורה בשמחה</span>
+                  <p className="text-slate-200 text-xs md:text-sm lg:text-base font-light flex items-center justify-center md:justify-start gap-2 flex-wrap">
+                    <span className="font-medium">ישיבת צביה אלישיב לוד</span>
+                    <span className="text-amber-300 font-semibold italic">מגדילים תורה בשמחה</span>
                   </p>
-               </div>
+                </div>
+              </div>
             </div>
-
-            <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto justify-center md:justify-end">
-               <button onClick={loadData} className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white p-3 md:p-4 rounded-2xl hover:text-amber-300 transition-all border border-white/20 hover:border-amber-400/50 shadow-lg" title="רענן נתונים">
-                   <RefreshCw className={`w-5 h-5 md:w-6 md:h-6 ${isLoading ? 'animate-spin' : ''}`} />
-               </button>
-               <button
-                  onClick={() => setIsTop150Open(true)}
-                  className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-amber-300 border border-white/20 hover:border-amber-400/50 px-4 md:px-6 py-3 md:py-4 rounded-2xl flex items-center gap-2 md:gap-3 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1"
-                >
-                  <Trophy className="w-4 h-4 md:w-5 md:h-5" />
-                  <span className="font-bold text-sm md:text-base">150 המובילים</span>
-               </button>
-               <button
-                  onClick={() => setIsHistoryOpen(true)}
-                  className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-amber-300 border border-white/20 hover:border-amber-400/50 px-4 md:px-6 py-3 md:py-4 rounded-2xl flex items-center gap-2 md:gap-3 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1"
-                >
-                  <TrendingUp className="w-4 h-4 md:w-5 md:h-5" />
-                  <span className="font-bold text-sm md:text-base">היסטוריית מובילים</span>
-               </button>
-               <button
-                  onClick={() => setIsAdminOpen(true)}
-                  className="bg-gradient-to-r from-white/15 to-white/10 hover:from-white/25 hover:to-white/15 backdrop-blur-md text-white border border-white/20 px-4 md:px-6 py-3 md:py-4 rounded-2xl flex items-center gap-2 md:gap-3 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1"
-               >
-                  <Lock className="w-4 h-4 md:w-5 md:h-5" />
-                  <span className="font-bold text-sm md:text-base">עדכון ניקוד</span>
-               </button>
+            <div className="flex flex-wrap items-center justify-end gap-1.5 md:gap-3 pt-2">
+              <button onClick={loadData} className="bg-white/15 hover:bg-white/25 backdrop-blur-md text-white p-2 md:p-4 rounded-lg md:rounded-xl hover:text-amber-300 transition-all border border-white/25 shadow-lg" title="רענן נתונים">
+                <RefreshCw className={`w-5 h-5 md:w-7 md:h-7 ${isLoading ? 'animate-spin' : ''}`} />
+              </button>
+              <button onClick={() => setIsTop150Open(true)} className="bg-white/15 hover:bg-white/25 backdrop-blur-md text-amber-300 border border-white/25 px-2.5 md:px-6 py-2 md:py-4 rounded-lg md:rounded-xl flex items-center gap-1.5 md:gap-2.5 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-xs md:text-base font-bold">
+                <Trophy className="w-4 h-4 md:w-6 md:h-6 flex-shrink-0" /> <span className="whitespace-nowrap">150 המובילים</span>
+              </button>
+              <button onClick={() => setIsHistoryOpen(true)} className="bg-white/15 hover:bg-white/25 backdrop-blur-md text-amber-300 border border-white/25 px-2.5 md:px-6 py-2 md:py-4 rounded-lg md:rounded-xl flex items-center gap-1.5 md:gap-2.5 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-xs md:text-base font-bold">
+                <TrendingUp className="w-4 h-4 md:w-6 md:h-6 flex-shrink-0" /> <span className="whitespace-nowrap">היסטוריה</span>
+              </button>
+              <button onClick={() => setIsAdminOpen(true)} className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white border border-white/25 px-2.5 md:px-6 py-2 md:py-4 rounded-lg md:rounded-xl flex items-center gap-1.5 md:gap-2.5 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-xs md:text-base font-bold">
+                <Lock className="w-4 h-4 md:w-6 md:h-6 flex-shrink-0" /> <span className="whitespace-nowrap">עדכון ניקוד</span>
+              </button>
             </div>
           </div>
         </header>
@@ -428,17 +427,6 @@ const App: React.FC = () => {
                         <BookOpen className="w-8 h-8 text-amber-500" />
                         דירוג הכיתות
                     </h2>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsProgressTableOpen(true)}
-                        className="text-sm font-medium text-amber-400 hover:text-amber-300 bg-slate-800/80 hover:bg-slate-700 border border-slate-600 rounded-full px-4 py-2 flex items-center gap-2 transition-colors"
-                      >
-                        <LayoutList className="w-4 h-4" />
-                        סוגיות וכרטיסיות
-                      </button>
-                      <span className="text-xs md:text-sm font-medium text-slate-500 bg-slate-800/50 px-3 py-1 rounded-full border border-slate-700">לחץ לפירוט מלא</span>
-                    </div>
                 </div>
                 
                 {students.length > 0 ? (
@@ -500,18 +488,6 @@ const App: React.FC = () => {
         onAddPointsToMultiple={handleAddPointsToMultiple}
         onExport={() => exportToCSV(students)}
         onClassBonusUpdated={async () => { await loadData(true, { keepCurrentIfEmpty: true, silent: true }); }}
-        onSugiotKartisiotMarked={(studentId, type, num) => {
-          setStudents(prev => prev.map(s => {
-            if (s.id !== studentId) return s;
-            if (type === 'sugia') {
-              if ((s.sugiotCompleted || []).includes(num)) return s;
-              return { ...s, sugiotCompleted: [...new Set([...(s.sugiotCompleted || []), num])].sort((a,b) => a - b), score: s.score + 10 };
-            } else {
-              if ((s.kartisiotCompleted || []).includes(num)) return s;
-              return { ...s, kartisiotCompleted: [...new Set([...(s.kartisiotCompleted || []), num])].sort((a,b) => a - b), score: s.score + 10 };
-            }
-          }));
-        }}
       />
 
       <HistoryModal
@@ -524,12 +500,6 @@ const App: React.FC = () => {
         isOpen={!!selectedClassForDetail}
         onClose={() => setSelectedClassForDetail(null)}
         classNameStr={selectedClassForDetail || ""}
-        students={students}
-      />
-
-      <ProgressTableModal
-        isOpen={isProgressTableOpen}
-        onClose={() => setIsProgressTableOpen(false)}
         students={students}
       />
 

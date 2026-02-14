@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Student } from '../types';
 import { ADMIN_PASSWORD } from '../constants';
-import { updateClassBonusInSheet, getClassProgressOrComputed, updateSugiotKartisiotInSheet } from '../services/dataManager';
-import { TOTAL_SUGIOT, TOTAL_KARTISIOT } from '../constants';
-import { X, Check, Lock, Save, AlertTriangle, Search, Sparkles, Users, CheckSquare, Square, Award, BookOpen } from 'lucide-react';
+import { updateClassBonusInSheet } from '../services/dataManager';
+import { X, Check, Lock, Save, AlertTriangle, Search, Sparkles, Users, CheckSquare, Square, Award } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -13,10 +12,9 @@ interface Props {
   onAddPointsToMultiple?: (studentIds: string[], points: number) => Promise<void>;
   onExport: () => void;
   onClassBonusUpdated?: () => void | Promise<void>;
-  onSugiotKartisiotMarked?: (studentId: string, type: 'sugia' | 'kartisia', num: number) => void;
 }
 
-export const AdminModal: React.FC<Props> = ({ isOpen, onClose, students, onAddPoints, onAddPointsToMultiple, onExport, onClassBonusUpdated, onSugiotKartisiotMarked }) => {
+export const AdminModal: React.FC<Props> = ({ isOpen, onClose, students, onAddPoints, onAddPointsToMultiple, onExport, onClassBonusUpdated }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState("");
@@ -31,14 +29,10 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, students, onAddPo
   // New state for class-based multi-select
   const [selectedClass, setSelectedClass] = useState<string>("");
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
-  const [viewMode, setViewMode] = useState<'single' | 'class' | 'bonus' | 'sugiot'>('class');
+  const [viewMode, setViewMode] = useState<'single' | 'class' | 'bonus'>('class');
   
   const [selectedClassForBonus, setSelectedClassForBonus] = useState<string>("");
   const [classBonusValue, setClassBonusValue] = useState<number | ''>('');
-
-  const [selectedClassSugiot, setSelectedClassSugiot] = useState<string>("");
-  const [sugiotTabMode, setSugiotTabMode] = useState<'sugiot' | 'kartisiot'>('sugiot');
-  const [addingCell, setAddingCell] = useState<{ studentId: string; type: 'sugia' | 'kartisia'; num: number } | null>(null);
 
   // Get unique classes
   const classes = useMemo(() => {
@@ -70,18 +64,8 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, students, onAddPo
         setViewMode('class');
         setSelectedClassForBonus("");
         setClassBonusValue('');
-        setSelectedClassSugiot("");
-        setAddingCell(null);
-        setSugiotTabMode('sugiot');
     }
   }, [isOpen]);
-
-  const classProgressMap = getClassProgressOrComputed(students);
-  const progressForSelectedClass = selectedClassSugiot ? classProgressMap[selectedClassSugiot] : null;
-  const classStudentsForSugiot = useMemo(() => {
-    if (!selectedClassSugiot) return [];
-    return students.filter(s => s.grade === selectedClassSugiot).sort((a, b) => a.name.localeCompare(b.name));
-  }, [selectedClassSugiot, students]);
 
   if (!isOpen) return null;
 
@@ -363,18 +347,6 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, students, onAddPo
                   <Award className="w-4 h-4 inline-block mr-2" />
                   בונוס כיתתי
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('sugiot')}
-                  className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
-                    viewMode === 'sugiot'
-                      ? 'bg-amber-600 text-white shadow-lg'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <BookOpen className="w-4 h-4 inline-block mr-2" />
-                  סוגיות וכרטיסיות
-                </button>
               </div>
 
               {/* Add Points Form */}
@@ -569,11 +541,6 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, students, onAddPo
                         <div className="text-right">
                           <span className="block text-3xl font-black text-amber-500">{selectedStudent.score.toLocaleString()}</span>
                           <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">נקודות</span>
-                          {((selectedStudent.sugiotCompleted?.length ?? 0) > 0 || (selectedStudent.kartisiotCompleted?.length ?? 0) > 0) && (
-                            <span className="block text-xs text-slate-400 mt-1">
-                              סוגיות: {(selectedStudent.sugiotCompleted || []).join(', ') || '–'} | כרטיסיות: {(selectedStudent.kartisiotCompleted || []).join(', ') || '–'}
-                            </span>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -695,125 +662,6 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, students, onAddPo
                     )}
                   </button>
                 </form>
-              ) : viewMode === 'sugiot' ? (
-                <div className="space-y-4">
-                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
-                    <div className="flex items-center gap-2 text-amber-300 mb-2">
-                      <BookOpen className="w-5 h-5" />
-                      <span className="font-bold">סוגיות וכרטיסיות</span>
-                    </div>
-                    <p className="text-sm text-slate-400">
-                      כל סוגיה = 10 נקודות, כל כרטיסייה = 10 נקודות. אם כל הכיתה מסיימת סוגיה או כרטיסייה — בונוס 300 נקודות לכיתה.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-slate-300">בחר כיתה</label>
-                    <select
-                      value={selectedClassSugiot}
-                      onChange={(e) => { setSelectedClassSugiot(e.target.value); setAddingCell(null); }}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
-                    >
-                      <option value="">-- בחר כיתה --</option>
-                      {classes.map((cls) => (
-                        <option key={cls} value={cls}>{cls}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {selectedClassSugiot && classStudentsForSugiot.length > 0 && (
-                    <>
-                      <div className="flex gap-2 p-1 rounded-lg bg-slate-800/50 border border-slate-700">
-                        <button
-                          type="button"
-                          onClick={() => setSugiotTabMode('sugiot')}
-                          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium ${sugiotTabMode === 'sugiot' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                        >
-                          סוגיות (1–{TOTAL_SUGIOT})
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setSugiotTabMode('kartisiot')}
-                          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium ${sugiotTabMode === 'kartisiot' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'}`}
-                        >
-                          כרטיסיות (1–{TOTAL_KARTISIOT})
-                        </button>
-                      </div>
-                      {(() => {
-                        const progress = progressForSelectedClass ?? {
-                          grade: selectedClassSugiot,
-                          studentCount: classStudentsForSugiot.length,
-                          sugiotCounts: Array.from({ length: TOTAL_SUGIOT }, (_, i) => classStudentsForSugiot.filter(s => (s.sugiotCompleted || []).includes(i + 1)).length),
-                          kartisiotCounts: Array.from({ length: TOTAL_KARTISIOT }, (_, i) => classStudentsForSugiot.filter(s => (s.kartisiotCompleted || []).includes(i + 1)).length),
-                          autoBonus: 0
-                        };
-                        const totalN = sugiotTabMode === 'sugiot' ? TOTAL_SUGIOT : TOTAL_KARTISIOT;
-                        return (
-                          <>
-                            <div className="text-sm font-medium text-slate-300">סימון — לחץ על + רק לתא שטרם סומן (אין כפילות)</div>
-                            <div className="overflow-x-auto border border-slate-700 rounded-lg max-h-[380px] overflow-y-auto">
-                              <table className="w-full text-center text-xs border-collapse">
-                                <thead className="sticky top-0 bg-slate-800 z-10">
-                                  <tr className="text-slate-300">
-                                    <th className="p-2 border-b border-slate-600 text-right min-w-[100px]">תלמיד</th>
-                                    {Array.from({ length: totalN }, (_, i) => i + 1).map((n) => (
-                                      <th key={n} className="p-0.5 border-b border-slate-600 w-7" title={sugiotTabMode === 'sugiot' ? `סוגיה ${n}` : `כרטיסייה ${n}`}>{n}</th>
-                                    ))}
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {classStudentsForSugiot.map((s) => (
-                                    <tr key={s.id} className="border-b border-slate-700 hover:bg-slate-800/50">
-                                      <td className="p-2 text-right font-medium text-white whitespace-nowrap sticky right-0 bg-slate-900 z-10">{s.name}</td>
-                                      {Array.from({ length: totalN }, (_, i) => i + 1).map((num) => {
-                                        const completed = sugiotTabMode === 'sugiot' ? (s.sugiotCompleted || []) : (s.kartisiotCompleted || []);
-                                        const done = completed.includes(num);
-                                        const adding = addingCell?.studentId === s.id && addingCell?.type === (sugiotTabMode === 'sugiot' ? 'sugia' : 'kartisia') && addingCell?.num === num;
-                                        return (
-                                          <td key={num} className="p-0.5">
-                                            {done ? (
-                                              <span className="inline-flex w-6 h-6 items-center justify-center rounded bg-green-500/30 text-green-400 font-bold">✓</span>
-                                            ) : (
-                                              <button
-                                                type="button"
-                                                disabled={!!addingCell}
-                                                onClick={async () => {
-                                                  const completed = sugiotTabMode === 'sugiot' ? (s.sugiotCompleted || []) : (s.kartisiotCompleted || []);
-                                                  if (completed.includes(num)) return;
-                                                  setAddingCell({ studentId: s.id, type: sugiotTabMode === 'sugiot' ? 'sugia' : 'kartisia', num });
-                                                  const sugNext = sugiotTabMode === 'sugiot' ? [...new Set([...(s.sugiotCompleted || []), num])].sort((a,b)=>a-b) : (s.sugiotCompleted || []);
-                                                  const kartNext = sugiotTabMode === 'kartisiot' ? [...new Set([...(s.kartisiotCompleted || []), num])].sort((a,b)=>a-b) : (s.kartisiotCompleted || []);
-                                                  const ok = await updateSugiotKartisiotInSheet(s, sugNext, kartNext);
-                                                  setAddingCell(null);
-                                                  if (ok) {
-                                                    onSugiotKartisiotMarked?.(s.id, sugiotTabMode === 'sugiot' ? 'sugia' : 'kartisia', num);
-                                                    setSuccessMessage(sugiotTabMode === 'sugiot' ? `✓ ${s.name} — סוגיה ${num} (+10 נקודות)` : `✓ ${s.name} — כרטיסייה ${num} (+10 נקודות)`);
-                                                    if (onClassBonusUpdated) {
-                                                      await new Promise(r => setTimeout(r, 400));
-                                                      await Promise.resolve(onClassBonusUpdated());
-                                                    }
-                                                  } else {
-                                                    alert('שגיאה בעדכון. נסה שוב.');
-                                                  }
-                                                  setTimeout(() => setSuccessMessage(''), 2500);
-                                                }}
-                                                className="w-6 h-6 rounded border border-slate-600 text-slate-500 hover:bg-amber-500/20 hover:border-amber-500 hover:text-amber-400 disabled:opacity-50"
-                                              >
-                                                {adding ? '...' : '+'}
-                                              </button>
-                                            )}
-                                          </td>
-                                        );
-                                      })}
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </>
-                  )}
-                </div>
               ) : null}
 
               <div className="pt-4 border-t border-slate-700">
