@@ -643,7 +643,7 @@ export const AdminModal: React.FC<Props> = ({ isOpen, onClose, students, onAddPo
                       min="0"
                     />
                     <p className="text-xs text-slate-500">
-                      הערה: זה יחליף את הבונוס הקיים. להגדלת הבונוס, הזן את הסכום הכולל הרצוי.
+                      הערה: הסכום שתזין יצטרף לבונוס הקיים של הכיתה.
                     </p>
                   </div>
 
